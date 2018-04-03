@@ -1,0 +1,89 @@
+import com.bmuschko.gradle.docker.tasks.image.DockerBuildImage
+buildscript {
+	ext {
+		springBootVersion = '2.0.0.RELEASE'
+	}
+	repositories {
+		mavenCentral()
+		jcenter()
+		maven { url "http://repo.spring.io/plugins-release" }
+		maven { url "https://plugins.gradle.org/m2/" }
+	}
+	dependencies {
+		classpath("org.springframework.boot:spring-boot-gradle-plugin:${springBootVersion}")
+		classpath('com.github.ksoichiro:gradle-console-reporter:0.5.0')
+		classpath ('com.bmuschko:gradle-docker-plugin:3.2.5')
+	}
+}
+
+apply plugin: 'java'
+apply plugin: 'eclipse'
+apply plugin: "jacoco"
+apply plugin: "io.spring.dependency-management"
+apply plugin: com.bmuschko.gradle.docker.DockerRemoteApiPlugin
+apply plugin: 'org.springframework.boot'
+apply plugin: 'io.spring.dependency-management'
+apply plugin: 'com.github.ksoichiro.console.reporter'
+
+defaultTasks 'bootRun'
+
+group = 'com.cube.kansal'
+version = '0.0.1-SNAPSHOT'
+sourceCompatibility = 1.8
+
+repositories {
+	mavenCentral()
+	jcenter()
+	maven { url "https://repo.spring.io/milestone" }
+}
+
+
+ext {
+	springCloudVersion = 'Finchley.M9'
+}
+
+dependencies {
+	compile('org.springframework.boot:spring-boot-starter-actuator')
+	compile('org.springframework.boot:spring-boot-starter-data-mongodb')
+	compile('org.springframework.boot:spring-boot-starter-hateoas')
+	compile('org.springframework.boot:spring-boot-starter-integration')
+	compile('org.springframework.boot:spring-boot-starter-mail')
+	compile('org.springframework.boot:spring-boot-starter-security')
+	compile('org.springframework.boot:spring-boot-starter-thymeleaf')
+	compile('org.springframework.boot:spring-boot-starter-web')
+	compile('org.springframework.cloud:spring-cloud-starter-aws')
+	compile('org.springframework.cloud:spring-cloud-starter-aws-jdbc')
+	compile('org.springframework.cloud:spring-cloud-starter-aws-messaging')
+	compile('org.springframework.cloud:spring-cloud-starter-netflix-hystrix')
+	compile('org.springframework.cloud:spring-cloud-starter-netflix-hystrix-dashboard')
+	compile('org.springframework.kafka:spring-kafka')
+	compile('com.fasterxml.jackson.core:jackson-core')
+	compile('org.liquibase:liquibase-core')
+    runtime('org.springframework.boot:spring-boot-devtools')
+	runtime('mysql:mysql-connector-java')
+    testCompile('org.springframework.boot:spring-boot-starter-aop')
+	testCompile('com.h2database:h2')
+	testCompile('org.springframework.boot:spring-boot-starter-test')
+	testCompile('org.springframework.security:spring-security-test')
+}
+task copyDockerFiles(type: Copy) {
+	description = "Copy Dockerfile and required data to build directory"
+	from 'src/main/docker'
+	from "${project.buildDir}/libs"
+	into { "${project.buildDir}/docker" }
+	include "*"
+	exclude "**/*.yml"
+}
+
+task buildDocker(type: DockerBuildImage, dependsOn: 'copyDockerFiles') {
+	description = "Package application as Docker image"
+	group = "Docker"
+	inputDir = project.file("${project.buildDir}/docker")
+	tags = ["stencil:latest".toString(), "stencil:${project.version}".toString()]
+}
+
+dependencyManagement {
+	imports {
+		mavenBom "org.springframework.cloud:spring-cloud-dependencies:${springCloudVersion}"
+	}
+}
